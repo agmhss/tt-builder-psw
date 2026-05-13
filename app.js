@@ -475,12 +475,14 @@ function populateAbsentTeachersList() {
     ).join('');
 }
 
+// --- CLOUD SYNC & NEW DYNAMIC HORIZONTAL PARSING ---
 window.syncFromCloud = async function() {
     updateStatus("Downloading Sheets...");
     try {
         const response = await fetch(SCRIPT_URL);
         const cloudData = await response.json();
 
+        // 1. Load Sub Duty Tracker
         window.subDutyTracker = {};
         if (cloudData.tracker && cloudData.tracker.length > 1) {
             cloudData.tracker.slice(1).forEach(row => {
@@ -496,31 +498,59 @@ window.syncFromCloud = async function() {
         if (cloudData.assignments && cloudData.assignments.length > 1) {
             cloudData.assignments.slice(1).forEach(row => {
                 let teacherName = String(row[0] || '').trim();
-                let subjectName = String(row[1] || '').trim();
                 if (!teacherName) return; 
 
-                for (let i = 2; i < row.length; i += 4) {
-                    let cls = String(row[i] || '').trim();
-                    let sec = String(row[i+1] || '').trim();
-                    let periods = parseInt(row[i+2]);
-                    let isCT = String(row[i+3] || '').trim().toLowerCase() === 'yes';
+                // --- BLOCK 1: முதல் வகுப்பு ஒதுக்கீடு (Columns B to F) ---
+                // Index: 1=Subject, 2=Class, 3=Section, 4=Periods, 5=Is CT?
+                let sub1 = String(row[1] || '').trim();
+                let cls1 = String(row[2] || '').trim();
+                let sec1 = String(row[3] || '').trim();
+                let per1 = parseInt(row[4]);
+                let isCT = String(row[5] || '').trim().toLowerCase() === 'yes';
 
-                    if (cls && !isNaN(periods) && periods > 0) {
+                if (cls1 && !isNaN(per1) && per1 > 0) {
+                    SCHOOL_CONFIG.assignments.push({
+                        teacherName: teacherName,
+                        subjectName: sub1,
+                        className: cls1 + "-" + sec1,
+                        periodsPerWeek: per1,
+                        isClassTeacher: isCT
+                    });
+                    
+                    window.teacherWorkload[teacherName] = (window.teacherWorkload[teacherName] || 0) + per1;
+                    let gVal1 = getGradeValue(cls1);
+                    window.teacherMaxGrade[teacherName] = Math.max((window.teacherMaxGrade[teacherName] || 0), gVal1);
+                }
+
+                // --- BLOCKS 2 to N: அடுத்தடுத்த வகுப்புகள் (Columns G முதல்) ---
+                // Index 6-ல் தொடங்கி 4, 4 ஆகத் தாவிச் செல்லும் (Subject, Class, Section, Periods)
+                for (let i = 6; i < row.length; i += 4) {
+                    let subN = String(row[i] || '').trim();
+                    let clsN = String(row[i+1] || '').trim();
+                    let secN = String(row[i+2] || '').trim();
+                    let perN = parseInt(row[i+3]);
+
+                    // Total Load காலம் வந்துவிட்டாலோ அல்லது வகுப்பு இல்லை என்றாலோ லூப்பை நிறுத்தவும்
+                    if (!clsN || clsN.toLowerCase() === 'total load') break; 
+
+                    if (!isNaN(perN) && perN > 0) {
                         SCHOOL_CONFIG.assignments.push({
                             teacherName: teacherName,
-                            subjectName: subjectName,
-                            className: cls + "-" + sec,
-                            periodsPerWeek: periods,
-                            isClassTeacher: isCT
+                            // ஒருவேளை Subject காலியாக விட்டிருந்தால், முதல் பாடத்தையே எடுத்துக்கொள்ளும்
+                            subjectName: subN ? subN : sub1, 
+                            className: clsN + "-" + secN,
+                            periodsPerWeek: perN,
+                            isClassTeacher: false // Class Teacher பொறுப்பு முதல் பிளாக்கில் மட்டுமே வரும்
                         });
                         
-                        window.teacherWorkload[teacherName] = (window.teacherWorkload[teacherName] || 0) + periods;
-                        let gVal = getGradeValue(cls);
-                        window.teacherMaxGrade[teacherName] = Math.max((window.teacherMaxGrade[teacherName] || 0), gVal);
+                        window.teacherWorkload[teacherName] = (window.teacherWorkload[teacherName] || 0) + perN;
+                        let gValN = getGradeValue(clsN);
+                        window.teacherMaxGrade[teacherName] = Math.max((window.teacherMaxGrade[teacherName] || 0), gValN);
                     }
                 }
             });
 
+            // 3. Level Classification (Primary / High / HrSec)
             window.teacherLevels = {};
             for (let t in window.teacherMaxGrade) {
                 window.teacherLevels[t] = getTeacherCategory(window.teacherMaxGrade[t]);
@@ -539,7 +569,6 @@ window.syncFromCloud = async function() {
         console.error("Cloud Error:", error);
     }
 };
-
 window.saveDutiesToCloud = async function() {
     updateStatus("Saving Duty Counts to Google Sheet...");
     const selects = document.querySelectorAll('select.w-full'); 
