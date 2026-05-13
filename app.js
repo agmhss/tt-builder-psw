@@ -595,58 +595,135 @@ window.saveDutiesToCloud = async function() {
     }
 };
 
-// --- EXPORT PDF (Landscape Mode & Classroom Display Optimized) ---
+// --- EXPORT PDF (With Master Visiting Card Generator & Landscape Mode) ---
 window.exportPDF = function() {
     const { jsPDF } = window.jspdf;
-    
-    // 'l' stands for Landscape, 'mm' for millimeters, 'a4' for paper size
-    const doc = new jsPDF('l', 'mm', 'a4'); 
-    
     const mode = document.getElementById('opMode').value;
     const selectedDate = getSelectedDateStr();
     
     if (mode === 'exam') {
+        const doc = new jsPDF('l', 'mm', 'a4'); 
         doc.setFontSize(14);
         doc.text(`${APP_CONFIG.shortName} Exam Invigilation Schedule`, 14, 15);
         doc.setFontSize(11);
         doc.text(`Date: ${selectedDate} | Session: ${currentSession}`, 14, 25);
         doc.text("Please use screenshot for Exam Duty Cards.", 14, 35);
+        doc.save(`${APP_CONFIG.shortName}_Exam_Schedule_${selectedDate}.pdf`);
+        
     } else if (mode === 'substitution') {
+        const doc = new jsPDF('l', 'mm', 'a4'); 
         const day = document.getElementById('subDay').value;
         doc.setFontSize(14);
         doc.text(`${APP_CONFIG.shortName} Substitution Duty - ${selectedDate} (${day})`, 14, 15);
         doc.setFontSize(11);
         doc.text("Please use the 'Print' button on the screen.", 14, 25);
+        doc.save(`${APP_CONFIG.shortName}_Sub_Schedule_${selectedDate}.pdf`);
+        
     } else {
-        const filterVal = document.getElementById('viewFilter').value;
-        
-        // தலைப்பைச் சற்றுப் பெரிதாக்குதல்
-        doc.setFontSize(16);
-        doc.setTextColor(30, 58, 138); // Dark Blue Text
-        doc.text(`${APP_CONFIG.shortName} Timetable - ${filterVal}`, 14, 18);
-        
-        // Landscape-க்கு ஏற்றவாறு டேபிளை விரிவுபடுத்துதல்
-        doc.autoTable({ 
-            html: '#scheduleTable', 
-            startY: 25, 
-            theme: 'grid', 
-            styles: { 
-                fontSize: 10,       // எழுத்துக்களின் அளவு பெரிதாக்கப்பட்டுள்ளது
-                cellPadding: 4,     // சுற்றிலும் இடைவெளி (Breathing room)
-                halign: 'center',   // Center alignment
-                valign: 'middle'    // Vertical center alignment
-            },
-            headStyles: { 
-                fillColor: [41, 128, 185], // Header-க்கு நல்ல நீல நிறம்
-                textColor: 255,
-                fontSize: 11,
-                fontStyle: 'bold'
-            },
-            alternateRowStyles: {
-                fillColor: [245, 247, 250] // வாசிப்பதற்கு எளிதாக வரிக்கு வரி மெல்லிய நிறம்
+        const viewType = document.getElementById('viewType')?.value || 'all';
+        const filterVal = document.getElementById('viewFilter')?.value || '';
+
+        // ==============================================================
+        // 🌟 NEW: VISITING CARD GENERATOR (All Teachers)
+        // ==============================================================
+        if (viewType === 'all') {
+            if (generatedWeeklyTimetable.length === 0) {
+                alert("No data generated. Click Sync Data first!");
+                return;
             }
-        });
+
+            const doc = new jsPDF('p', 'mm', 'a4'); // Portrait mode for cards
+            let allTeachers = [...new Set(SCHOOL_CONFIG.assignments.map(a => a.teacherName.replace('⭐ ', '')))].sort();
+            
+            // Card Dimensions (90mm x 54mm) - Standard ID Card / Visiting Card Size
+            const cW = 90; 
+            const cH = 54; 
+            const marginX = 10; 
+            const marginY = 10; 
+            const gapY = 3; // Vertical gap for scissor cutting
+            
+            let cardsOnPage = 0;
+            const teachingPeriods = SCHOOL_CONFIG.regularTimings.filter(p => p.type === 'class');
+            const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']; // Short day names
+
+            allTeachers.forEach((teacher) => {
+                if (cardsOnPage === 10) { 
+                    doc.addPage(); 
+                    cardsOnPage = 0; 
+                }
+                
+                let col = cardsOnPage % 2;
+                let row = Math.floor(cardsOnPage / 2);
+                let x = marginX + col * (cW + 10); // 10mm horizontal gap
+                let y = marginY + row * (cH + gapY);
+
+                // 1. Draw Card Border (To guide scissors)
+                doc.setDrawColor(180, 180, 180); 
+                doc.setLineWidth(0.3);
+                doc.rect(x, y, cW, cH);
+
+                // 2. Teacher Name & School Name Header
+                doc.setFontSize(9); 
+                doc.setTextColor(0); 
+                doc.setFont("helvetica", "bold");
+                let displayName = teacher.length > 20 ? teacher.substring(0, 18) + "..." : teacher;
+                doc.text(`${APP_CONFIG.shortName} - ${displayName}`, x + 2, y + 5);
+
+                // 3. Build Miniature Table Data
+                let head = [['Day', ...teachingPeriods.map((_, i) => i + 1)]];
+                let body = [];
+                
+                daysOfWeek.forEach((day, dIdx) => {
+                    let rowData = [dayLabels[dIdx]];
+                    teachingPeriods.forEach(period => {
+                        let slot = generatedWeeklyTimetable.find(d => d.day === day && d.period === period.label && d.teacherName.replace('⭐ ', '') === teacher);
+                        // Show only Class Name (e.g. "10-A") to save space
+                        rowData.push(slot ? slot.className : '-'); 
+                    });
+                    body.push(rowData);
+                });
+
+                // 4. Print Miniature Table inside the Card
+                doc.autoTable({
+                    head: head, 
+                    body: body,
+                    startY: y + 7, 
+                    margin: { left: x + 2 }, 
+                    tableWidth: cW - 4,
+                    theme: 'grid',
+                    styles: { 
+                        fontSize: 6.5,       // Very small font for visiting card
+                        cellPadding: 1, 
+                        halign: 'center', 
+                        valign: 'middle', 
+                        lineColor: [150, 150, 150], 
+                        lineWidth: 0.1 
+                    },
+                    headStyles: { fillColor: [220, 220, 220], textColor: 20, fontStyle: 'bold' },
+                    columnStyles: { 0: { fontStyle: 'bold', fillColor: [245, 245, 245] } }
+                });
+                
+                cardsOnPage++;
+            });
+            
+            doc.save(`${APP_CONFIG.shortName}_All_Teacher_Cards.pdf`);
+
+        } else {
+            // ==============================================================
+            // SINGLE TIMETABLE LOGIC (Landscape Mode)
+            // ==============================================================
+            const doc = new jsPDF('l', 'mm', 'a4'); // Landscape mode
+            doc.setFontSize(16);
+            doc.setTextColor(30, 58, 138); 
+            doc.text(`${APP_CONFIG.shortName} Timetable - ${filterVal}`, 14, 18);
+            
+            doc.autoTable({ 
+                html: '#scheduleTable', startY: 25, theme: 'grid', 
+                styles: { fontSize: 10, cellPadding: 4, halign: 'center', valign: 'middle' },
+                headStyles: { fillColor: [41, 128, 185], textColor: 255, fontSize: 11, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [245, 247, 250] }
+            });
+            doc.save(`${APP_CONFIG.shortName}_Schedule_${filterVal.replace(' ', '_')}.pdf`);
+        }
     }
-    
-    doc.save(`${APP_CONFIG.shortName}_Schedule_${selectedDate}.pdf`);
 };
