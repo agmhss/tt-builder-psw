@@ -7,11 +7,10 @@
 // ⚙️ MASTER CONFIGURATION (Change only this block for other schools)
 // ========================================================================
 const APP_CONFIG = {
-    fullName: "GHSS VELAMURITHANPETTAI", 
-    shortName: "GHSS VELAMURITHANPETTAI",                                           
-    scriptUrl: "https://script.google.com/macros/s/AKfycbwWlI-5iHo-lXoIeaSeHLs-jeI5sFxviEBSsJ3PS4AQJEN8ReoCG9xwpYKGJvYcMDPh/exec" 
+    fullName: "Anna Government Model Hr Sec School, Patteeswaram", 
+    shortName: "AGMHSS",                                           
+    scriptUrl: "https://script.google.com/macros/s/AKfycbzFzkBoIld8L0hGq9pv9VoFNr-4iwq8HsyGKkbCoj58Cy3YvfHh5VpP7uWZPJScgEOr/exec" 
 };
-
 const SCRIPT_URL = APP_CONFIG.scriptUrl;
 
 // --- Global Trackers ---
