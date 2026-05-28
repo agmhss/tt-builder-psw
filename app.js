@@ -2,11 +2,10 @@
  * app.js - Advanced Timetable, Exam & Substitution Engine
  * Version: Ultimate Master Build + Human-Machine Collaborative Editor
  */
-
 const APP_CONFIG = {
-    fullName: "GHSS VELAMURITHANPETTAI", 
-    shortName: "GHSS VMPT",                                           
-    scriptUrl: "https://script.google.com/macros/s/AKfycbyvAwxIAjtSB5AysA1Z7E0AC1ImJFv_HGJIObs_zY5k7Lt9aNgNastU1UCuCNlZrBQQ7w/exec" 
+    fullName: "AGMHSS PATTEESWARAM", 
+    shortName: "AGMHSS PSW",                                           
+    scriptUrl: "https://script.google.com/macros/s/AKfycbz1lQXlw5mIxgZPZzRrGFpkFiZBmLBTm7fE_mH-P9iy7oaFtsh0I-XGo527fzyz1xe0/exec" 
 };
 const SCRIPT_URL = APP_CONFIG.scriptUrl;
 
