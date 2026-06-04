@@ -258,7 +258,46 @@ function generateAutoTimetable() {
         let currentScore = 0;
 
         let currentAssignments = JSON.parse(JSON.stringify(SCHOOL_CONFIG.assignments));
+        
+        // 🌟 RESET COUNTS FIRST
+        currentAssignments.forEach(req => req.assignedCount = 0);
 
+        // 🌟 1. ABSOLUTE RULE: CLASS TEACHERS MUST GET PERIOD 1 ON ALL 5 DAYS
+        // எந்தச் சூழ்நிலையிலும் இந்த விதி மீறப்படாது! (Pre-Allocation)
+        currentAssignments.filter(req => req.isClassTeacher).forEach(req => {
+            let indClasses = getIndividualClasses(req.className);
+            daysOfWeek.forEach(day => {
+                // ஆசிரியருக்கு பீரியட்கள் மீதமிருந்தால் மட்டுமே ஒதுக்கப்படும் (பொதுவாக 5-க்கு மேல் இருக்கும்)
+                if (req.assignedCount < req.periodsPerWeek) {
+                    let timeKey = `${day}-${firstPeriod.label}`;
+                    let isClassBusy = indClasses.some(cls => classAvail[cls]?.[timeKey]);
+                    let isTeacherBusy = teacherAvail[req.teacherName]?.[timeKey];
+                    let sessionType = fnPeriodLabels.includes(firstPeriod.label) ? 'FN' : 'AN';
+                    let ptAvail = isPartTimeTeacherAvailable(req.teacherName, sessionType);
+
+                    if (!isTeacherBusy && !isClassBusy && ptAvail) {
+                        tempTimetable.push({
+                            day: day, period: firstPeriod.label, time: `${firstPeriod.start} - ${firstPeriod.end}`,
+                            className: req.className, subjectName: req.subjectName, teacherName: req.teacherName
+                        });
+                        
+                        if(!teacherAvail[req.teacherName]) teacherAvail[req.teacherName] = {};
+                        teacherAvail[req.teacherName][timeKey] = true;
+                        
+                        indClasses.forEach(cls => {
+                            if(!classAvail[cls]) classAvail[cls] = {};
+                            classAvail[cls][timeKey] = true;
+                        });
+                        
+                        dailySubjectCount[`${req.className}-${day}-${req.subjectName}`] = (dailySubjectCount[`${req.className}-${day}-${req.subjectName}`] || 0) + 1;
+                        req.assignedCount++;
+                        currentScore++;
+                    }
+                }
+            });
+        });
+
+        // 🌟 2. SORTING FOR THE REMAINING PERIODS
         currentAssignments.sort((a, b) => {
             let isPartTimeA = window.teacherPartTimeStatus[a.teacherName] !== 'FULL' ? 1 : 0;
             let isPartTimeB = window.teacherPartTimeStatus[b.teacherName] !== 'FULL' ? 1 : 0;
@@ -276,16 +315,18 @@ function generateAutoTimetable() {
             let maxDailyAllowed = Math.max(1, Math.ceil(req.periodsPerWeek / 5));
             let startDayIdx = iteration === 0 ? 0 : Math.floor(Math.random() * 5); 
 
-            // 🌟 NEW: SCIENCE PRACTICALS (Consecutive Double Period Logic)
+            // --- SCIENCE PRACTICALS (Consecutive Double Period Logic) ---
             let isScience = req.subjectName.toUpperCase().includes('SCI') || req.subjectName.toUpperCase() === 'SCIENCE';
             let gradeVal = getGradeValue(req.className);
-            let isTargetGrade = gradeVal >= 6 && gradeVal <= 12; // 6 to 12 constraint
-            let needsDouble = isScience && req.periodsPerWeek >= 2 && isTargetGrade;
+            let isTargetGrade = gradeVal >= 6 && gradeVal <= 12; 
+            
+            // ஆசிரியருக்கு குறைந்தது 2 பீரியட்களாவது மீதம் இருக்க வேண்டும்
+            let periodsLeft = req.periodsPerWeek - req.assignedCount;
+            let needsDouble = isScience && req.periodsPerWeek >= 2 && isTargetGrade && periodsLeft >= 2 && req.assignedCount < 2;
 
-            if (needsDouble && req.assignedCount === 0) {
+            if (needsDouble) {
                 let anPairs = [];
                 let fnPairs = [];
-                // Find consecutive valid pairs in the same session (No spanning across lunch)
                 for (let i = 0; i < teachingPeriods.length - 1; i++) {
                     let p1 = teachingPeriods[i];
                     let p2 = teachingPeriods[i+1];
@@ -312,7 +353,7 @@ function generateAutoTimetable() {
                             let p1 = teachingPeriods[pair[0]];
                             let p2 = teachingPeriods[pair[1]];
 
-                            if (!req.isClassTeacher && p1.label === firstPeriod.label) continue; 
+                            if (!req.isClassTeacher && (p1.label === firstPeriod.label || p2.label === firstPeriod.label)) continue; 
 
                             let t1Key = `${day}-${p1.label}`;
                             let t2Key = `${day}-${p2.label}`;
@@ -337,8 +378,8 @@ function generateAutoTimetable() {
                                         classAvail[cls][`${day}-${p.label}`] = true;
                                     });
                                 };
-                                placeSlot(p1); // Place Period 1
-                                placeSlot(p2); // Place Period 2
+                                placeSlot(p1); 
+                                placeSlot(p2); 
 
                                 dailySubjectCount[`${req.className}-${day}-${req.subjectName}`] = currentDayCount + 2;
                                 req.assignedCount += 2;
@@ -350,13 +391,13 @@ function generateAutoTimetable() {
                     return false;
                 };
 
-                // PREFERENCE: Try Afternoon (AN) pairs first. If it fails, fallback to Forenoon (FN)
+                // Priority: Try Afternoon (AN) pairs first for Practicals
                 if (!tryPairs(anPairs)) {
                     tryPairs(fnPairs);
                 }
             }
 
-            // --- Regular Single Period Placement (for remaining periods) ---
+            // --- 🌟 Regular Single Period Placement ---
             for (let i = 0; i < req.periodsPerWeek; i++) {
                 if (req.assignedCount >= req.periodsPerWeek) break; 
 
@@ -371,6 +412,7 @@ function generateAutoTimetable() {
                     if (iteration > 0) periodsToTry.sort(() => Math.random() - 0.5);
 
                     for (let period of periodsToTry) {
+                        // Protect Period 1 strictly for Class Teachers
                         if (!req.isClassTeacher && period.label === firstPeriod.label) continue; 
 
                         let isFN = fnPeriodLabels.includes(period.label);
@@ -408,7 +450,6 @@ function generateAutoTimetable() {
             }
         }
 
-        currentAssignments.forEach(req => req.assignedCount = 0);
         currentAssignments.forEach(req => attemptPlacement(req, false));
         currentAssignments.forEach(req => {
             if (req.assignedCount < req.periodsPerWeek) attemptPlacement(req, true);
@@ -422,8 +463,7 @@ function generateAutoTimetable() {
     }
 
     generatedWeeklyTimetable = bestTimetable;
-}
-// =========================================================
+}// =========================================================
 // 🌟 DATA SYNC & CLOUD SAVING ENGINE 
 // =========================================================
 
