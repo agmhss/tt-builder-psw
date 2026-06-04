@@ -274,9 +274,89 @@ function generateAutoTimetable() {
         function attemptPlacement(req, allowLimitBypass) {
             let indClasses = getIndividualClasses(req.className);
             let maxDailyAllowed = Math.max(1, Math.ceil(req.periodsPerWeek / 5));
-
             let startDayIdx = iteration === 0 ? 0 : Math.floor(Math.random() * 5); 
 
+            // 🌟 NEW: SCIENCE PRACTICALS (Consecutive Double Period Logic)
+            let isScience = req.subjectName.toUpperCase().includes('SCI') || req.subjectName.toUpperCase() === 'SCIENCE';
+            let gradeVal = getGradeValue(req.className);
+            let isTargetGrade = gradeVal >= 6 && gradeVal <= 12; // 6 to 12 constraint
+            let needsDouble = isScience && req.periodsPerWeek >= 2 && isTargetGrade;
+
+            if (needsDouble && req.assignedCount === 0) {
+                let anPairs = [];
+                let fnPairs = [];
+                // Find consecutive valid pairs in the same session (No spanning across lunch)
+                for (let i = 0; i < teachingPeriods.length - 1; i++) {
+                    let p1 = teachingPeriods[i];
+                    let p2 = teachingPeriods[i+1];
+                    let s1 = fnPeriodLabels.includes(p1.label) ? 'FN' : 'AN';
+                    let s2 = fnPeriodLabels.includes(p2.label) ? 'FN' : 'AN';
+                    if (s1 === s2) { 
+                        if (s1 === 'AN') anPairs.push([i, i+1]);
+                        else fnPairs.push([i, i+1]);
+                    }
+                }
+
+                let tryPairs = (pairs) => {
+                    let daysToTry = [...daysOfWeek];
+                    if (iteration > 0) daysToTry.sort(() => Math.random() - 0.5);
+
+                    for (let day of daysToTry) {
+                        let currentDayCount = dailySubjectCount[`${req.className}-${day}-${req.subjectName}`] || 0;
+                        if (!allowLimitBypass && currentDayCount > 0) continue; 
+
+                        let pairsToTry = [...pairs];
+                        if (iteration > 0) pairsToTry.sort(() => Math.random() - 0.5);
+
+                        for (let pair of pairsToTry) {
+                            let p1 = teachingPeriods[pair[0]];
+                            let p2 = teachingPeriods[pair[1]];
+
+                            if (!req.isClassTeacher && p1.label === firstPeriod.label) continue; 
+
+                            let t1Key = `${day}-${p1.label}`;
+                            let t2Key = `${day}-${p2.label}`;
+
+                            let isClassBusy = indClasses.some(cls => classAvail[cls]?.[t1Key] || classAvail[cls]?.[t2Key]);
+                            let isTeacherBusy = teacherAvail[req.teacherName]?.[t1Key] || teacherAvail[req.teacherName]?.[t2Key];
+
+                            let p1Session = fnPeriodLabels.includes(p1.label) ? 'FN' : 'AN';
+                            let p2Session = fnPeriodLabels.includes(p2.label) ? 'FN' : 'AN';
+                            let ptAvail = isPartTimeTeacherAvailable(req.teacherName, p1Session) && isPartTimeTeacherAvailable(req.teacherName, p2Session);
+
+                            if (!isTeacherBusy && !isClassBusy && ptAvail) {
+                                let placeSlot = (p) => {
+                                    tempTimetable.push({
+                                        day: day, period: p.label, time: `${p.start} - ${p.end}`,
+                                        className: req.className, subjectName: req.subjectName, teacherName: req.teacherName
+                                    });
+                                    if(!teacherAvail[req.teacherName]) teacherAvail[req.teacherName] = {};
+                                    teacherAvail[req.teacherName][`${day}-${p.label}`] = true;
+                                    indClasses.forEach(cls => {
+                                        if(!classAvail[cls]) classAvail[cls] = {};
+                                        classAvail[cls][`${day}-${p.label}`] = true;
+                                    });
+                                };
+                                placeSlot(p1); // Place Period 1
+                                placeSlot(p2); // Place Period 2
+
+                                dailySubjectCount[`${req.className}-${day}-${req.subjectName}`] = currentDayCount + 2;
+                                req.assignedCount += 2;
+                                currentScore += 2;
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+
+                // PREFERENCE: Try Afternoon (AN) pairs first. If it fails, fallback to Forenoon (FN)
+                if (!tryPairs(anPairs)) {
+                    tryPairs(fnPairs);
+                }
+            }
+
+            // --- Regular Single Period Placement (for remaining periods) ---
             for (let i = 0; i < req.periodsPerWeek; i++) {
                 if (req.assignedCount >= req.periodsPerWeek) break; 
 
@@ -343,7 +423,6 @@ function generateAutoTimetable() {
 
     generatedWeeklyTimetable = bestTimetable;
 }
-
 // =========================================================
 // 🌟 DATA SYNC & CLOUD SAVING ENGINE 
 // =========================================================
