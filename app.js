@@ -11,6 +11,53 @@ const APP_CONFIG = {
 const SCRIPT_URL = APP_CONFIG.scriptUrl;
 
 // ==========================================
+// 🌟 UI DROPDOWN LISTENERS (THE FIX)
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    const viewType = document.getElementById('viewType');
+    const viewFilter = document.getElementById('viewFilter');
+    
+    if(viewType && viewFilter) {
+        viewType.addEventListener('change', (e) => {
+            viewFilter.innerHTML = ''; 
+            let options = new Set();
+            
+            // Engine ஓடவில்லை என்றால் (No Data)
+            if (generatedWeeklyTimetable.length === 0) {
+                viewFilter.innerHTML = '<option value="">No Data (Process Engine First)</option>';
+                viewFilter.classList.remove('hidden');
+                return;
+            }
+
+            if (e.target.value === 'class') {
+                viewFilter.classList.remove('hidden');
+                generatedWeeklyTimetable.forEach(slot => {
+                    getIndividualClasses(slot.className).forEach(c => options.add(c));
+                });
+            } else if (e.target.value === 'teacher') {
+                viewFilter.classList.remove('hidden');
+                generatedWeeklyTimetable.forEach(slot => options.add(slot.teacherName));
+            } else {
+                viewFilter.classList.add('hidden');
+                renderRegularTimetable();
+                return;
+            }
+            
+            let sortedOptions = Array.from(options).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+            sortedOptions.forEach(opt => { viewFilter.innerHTML += `<option value="${opt}">${opt}</option>`; });
+            
+            // Auto-render the first option
+            if(sortedOptions.length > 0) {
+                viewFilter.value = sortedOptions[0];
+                renderRegularTimetable();
+            }
+        });
+
+        viewFilter.addEventListener('change', renderRegularTimetable);
+    }
+});
+
+// ==========================================
 // 🌟 GLOBAL TRACKERS & STATE
 // ==========================================
 let generatedWeeklyTimetable = [];
