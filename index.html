@@ -3,194 +3,312 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AGMHSS Smart Timetable Engine</title>
+    <title>Smart Timetable CMS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    
     <style>
-        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        .gradient-bg { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); }
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+        body { font-family: 'Nunito', sans-serif; background-color: #f3f4f6; }
+        /* Style for Teacher Portal Rest Selection */
+        .rest-slot.selected { background-color: #ef4444 !important; color: white; border-color: #dc2626; }
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-gray-100 font-sans text-gray-900">
+<body class="text-gray-800 antialiased h-screen flex flex-col overflow-hidden relative">
 
-    <nav class="gradient-bg p-6 shadow-xl text-white">
-        <div class="container mx-auto flex justify-between items-center">
-            <div>
-                <h1 id="schoolNameDisplay" class="text-2xl md:text-4xl font-black tracking-tight uppercase">AGMHSS PSW</h1>
-                <p class="text-blue-100 text-sm font-medium">Smart Timetable & Duty Engine</p>
+    <div id="loginScreen" class="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border-t-8 border-blue-600 transform transition-all">
+            <div class="text-center mb-8">
+                <h1 id="loginSchoolName" class="text-3xl font-black text-blue-900 uppercase tracking-widest">AGMHSS PATTEESWARAM</h1>
+                <p class="text-sm font-bold text-gray-500 mt-1">Smart TIMETABLE Portal</p>
             </div>
-            <div id="statusIndicator" class="bg-blue-900/50 px-4 py-1.5 rounded-full border border-blue-400 text-xs font-bold tracking-widest">SYSTEM READY</div>
-        </div>
-    </nav>
-
-    <div class="container mx-auto mt-6 px-4">
-        <div class="glass p-4 rounded-xl border border-blue-200 shadow-sm relative">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-sm font-black text-blue-800 uppercase flex items-center gap-2">
-                    <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Class Period Allotment Tracker
-                </h3>
-                <button onclick="openOptimizerModal()" class="text-xs bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-200 transition-all shadow-sm flex items-center gap-1 transform hover:scale-105">
-                    <i data-lucide="lightbulb" class="w-3 h-3"></i> Sheet Optimizer
-                </button>
-            </div>
-            <div id="loadStatus" class="flex gap-2 flex-wrap">
-                <span class="text-gray-400 text-xs italic">Sync data to load class status...</span>
-            </div>
-        </div>
-    </div>
-
-    <main class="container mx-auto px-4 py-8">
-        <section class="glass rounded-2xl p-6 mb-8 shadow-lg border border-gray-200">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <div class="space-y-5">
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Operation Mode</label>
-                    <select id="opMode" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold focus:border-blue-500 outline-none">
-                        <option value="regular">Regular Timetable</option>
-                        <option value="exam">Exam Duty Mode</option>
-                        <option value="substitution">Substitution Manager</option>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Login As</label>
+                    <select id="loginRole" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:border-blue-500 transition-colors" onchange="toggleTeacherNameInput()">
+                        <option value="admin">System Administrator</option>
+                        <option value="teacher">Staff / Teacher</option>
                     </select>
                 </div>
-
-      <div id="examPatternGroup" class="hidden">
-    <div class="space-y-3">
-        <!-- Exam Pattern Dropdown -->
-        <div>
-            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Pattern</label>
-            <select id="patternSelect" class="w-full p-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl outline-none text-sm font-bold text-gray-700">
-                <option value="Full School (1 to 12)">Full School (1-12)</option>
-                <option value="High & Hr.Sec Only (6 to 12)">High & Hr.Sec (6-12)</option>
-            </select>
-        </div>
-        <!-- Session Toggle Buttons -->
-        <div>
-            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Session</label>
-            <div class="flex bg-gray-200 p-1 rounded-xl">
-                <button id="btnFN" class="flex-1 py-1.5 rounded-lg bg-white shadow-sm text-blue-700 font-bold text-sm transition-all">FN (Morning)</button>
-                <button id="btnAN" class="flex-1 py-1.5 rounded-lg text-gray-500 hover:bg-gray-300 font-bold text-sm transition-all">AN (Afternoon)</button>
+                
+                <div id="teacherNameGroup" class="hidden">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Teacher Name / ID</label>
+                    <input type="text" id="loginTeacherName" placeholder="E.g. VCK" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold uppercase text-gray-700 outline-none focus:border-blue-500 transition-colors">
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Secure Passkey</label>
+                    <input type="password" id="loginPasskey" placeholder="Enter Passkey" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:border-blue-500 transition-colors">
+                </div>
+                
+                <button onclick="attemptLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black p-3 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all mt-4 transform hover:scale-[1.02]">
+                    <i data-lucide="lock" class="w-5 h-5"></i> SECURE LOGIN
+                </button>
+                <p id="loginError" class="text-xs text-red-500 font-bold text-center mt-3 hidden">Invalid Credentials!</p>
             </div>
         </div>
     </div>
-</div>
-                <div id="substituteGroup" class="hidden">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Day of Substitution</label>
-                    <select id="subDay" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl outline-none">
-                        <option value="Monday">Monday</option>
-                        <option value="Tuesday">Tuesday</option>
-                        <option value="Wednesday">Wednesday</option>
-                        <option value="Thursday">Thursday</option>
-                        <option value="Friday">Friday</option>
-                    </select>
-                </div>
 
-                <div class="flex items-end">
-                    <button onclick="generateGrid()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black p-3 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
-                        <i data-lucide="refresh-cw" class="w-5 h-5"></i> PROCESS
-                    </button>
+    <div id="adminPortal" class="hidden h-full flex flex-col w-full">
+        <header class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10 shrink-0">
+            <div class="flex items-center gap-3">
+                <i data-lucide="shield-check" class="w-6 h-6 text-blue-300"></i>
+                <h1 class="text-xl font-black tracking-wider">ADMIN CONSOLE</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="adminStatusIndicator" class="bg-blue-800 text-blue-200 text-xs px-3 py-1 rounded-full font-bold shadow-inner">System Ready</span>
+                <button onclick="logout()" class="text-blue-200 hover:text-white transition-colors bg-blue-800 px-3 py-1.5 rounded flex items-center gap-2 text-sm font-bold"><i data-lucide="log-out" class="w-4 h-4"></i> Logout</button>
+            </div>
+        </header>
+
+        <nav class="bg-white shadow-sm flex overflow-x-auto shrink-0 border-b border-gray-200">
+            <button onclick="switchAdminTab('tabAllotment')" class="admin-tab px-6 py-4 font-bold text-gray-500 hover:text-blue-600 border-b-4 border-transparent hover:border-blue-600 transition-all whitespace-nowrap active-tab border-blue-600 text-blue-700">Data & Allotment</button>
+            <button onclick="switchAdminTab('tabPasskeys')" class="admin-tab px-6 py-4 font-bold text-gray-500 hover:text-blue-600 border-b-4 border-transparent hover:border-blue-600 transition-all whitespace-nowrap">Security Passkeys</button>
+            <button onclick="switchAdminTab('tabRules')" class="admin-tab px-6 py-4 font-bold text-gray-500 hover:text-purple-600 border-b-4 border-transparent hover:border-purple-600 transition-all whitespace-nowrap">Constraint Manager</button>
+            <button onclick="switchAdminTab('tabGenerator')" class="admin-tab px-6 py-4 font-bold text-gray-500 hover:text-blue-600 border-b-4 border-transparent hover:border-blue-600 transition-all whitespace-nowrap">Timetable Engine</button>
+        </nav>
+
+        <main class="flex-1 overflow-y-auto p-6 relative">
+            
+            <div id="tabAllotment" class="admin-tab-content space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-lg font-black text-gray-800 mb-4 flex items-center gap-2"><i data-lucide="user-plus" class="w-5 h-5 text-blue-600"></i> Add / Drop Staff Workload</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Teacher Name</label><input type="text" id="newTName" class="w-full p-2 bg-gray-50 border rounded font-bold uppercase" placeholder="E.g. VCK"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Subject / Activity</label><input type="text" id="newTSub" class="w-full p-2 bg-gray-50 border rounded font-bold uppercase" placeholder="E.g. ENG"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Class (e.g. 10-A&B)</label><input type="text" id="newTClass" class="w-full p-2 bg-gray-50 border rounded font-bold uppercase" placeholder="E.g. 10-E"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Total Periods</label><input type="number" id="newTPeriods" class="w-full p-2 bg-gray-50 border rounded font-bold" value="5" min="1"></div>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <label class="flex items-center gap-2 text-sm font-bold text-gray-600 cursor-pointer hover:text-blue-600 transition-colors"><input type="checkbox" id="isCT" class="w-4 h-4 rounded text-blue-600"> Is Class Teacher for this class?</label>
+                        <button onclick="addTeacherAllotmentUI()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg shadow transition-colors flex items-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Append Workload</button>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-black text-gray-800 flex items-center gap-2"><i data-lucide="database" class="w-5 h-5 text-blue-600"></i> Current Active Master Ledger</h2>
+                        <button onclick="saveAllotmentToCloud()" class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded font-bold text-sm shadow flex items-center gap-2"><i data-lucide="cloud-upload" class="w-4 h-4"></i> Lock & Save to Cloud</button>
+                    </div>
+                    <div class="overflow-x-auto max-h-[400px]">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead class="bg-gray-100 text-gray-700 sticky top-0 shadow-sm">
+                                <tr><th class="p-3 border-b border-gray-200">Teacher</th><th class="p-3 border-b border-gray-200">Activity</th><th class="p-3 border-b border-gray-200">Class</th><th class="p-3 border-b border-gray-200 text-center">Periods</th><th class="p-3 border-b border-gray-200 text-center">CT?</th><th class="p-3 border-b border-gray-200 text-center">Action</th></tr>
+                            </thead>
+                            <tbody id="uiAllotmentTableBody" class="divide-y divide-gray-100">
+                                </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <div id="dailyToolsGroup" class="hidden mt-6 pt-6 border-t border-gray-200">
-                <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Absent Teachers / Date</label>
-                <div class="flex flex-wrap gap-3 p-3 bg-gray-50 border border-gray-100 rounded-lg min-h-[50px]" id="absentTeachersList">
-                    <span class="text-xs text-gray-400 italic">Sync data to load teachers...</span>
+            <div id="tabPasskeys" class="admin-tab-content hidden space-y-6">
+                <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded shadow-sm">
+                    <h3 class="font-bold text-orange-900 flex items-center gap-2"><i data-lucide="key" class="w-5 h-5"></i> Secure Staff Passkeys</h3>
+                    <p class="text-sm text-orange-800 mt-1">These 6-digit passkeys allow teachers to log into their portals to submit their constraints. Hand them out securely.</p>
+                    <button onclick="downloadPasskeysPDF()" class="mt-4 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-6 rounded shadow transition-colors flex items-center gap-2"><i data-lucide="download" class="w-4 h-4"></i> Download Passkeys PDF</button>
                 </div>
-                <input type="date" id="workDate" class="mt-4 p-2 border rounded text-sm font-bold text-gray-700 bg-white">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-lg font-black text-gray-800 mb-4 border-b pb-2">Active Credentials Directory</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" id="passkeyGridDisplay">
+                        </div>
+                </div>
             </div>
-        </section>
 
-        <section class="glass rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-            <div class="p-6 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4">
-                <h2 class="font-black text-xl text-blue-900">Smart Viewer</h2>
-                <div class="flex gap-2">
-                    <select id="viewType" class="bg-gray-100 p-2 rounded-lg text-sm font-bold">
-                        <option value="all">All</option>
-                        <option value="class">By Class</option>
-                        <option value="teacher">By Teacher</option>
-                    </select>
-                    <select id="viewFilter" class="bg-gray-100 p-2 rounded-lg text-sm font-bold hidden"></select>
+            <div id="tabRules" class="admin-tab-content hidden space-y-6">
+                <div class="bg-purple-50 border-l-4 border-purple-500 p-4 rounded shadow-sm">
+                    <h3 class="font-bold text-purple-900 flex items-center gap-2"><i data-lucide="scale" class="w-5 h-5"></i> Dynamic Rule Engine</h3>
+                    <p class="text-sm text-purple-800 mt-1">Add dynamic constraints to the Timetable Algorithm without writing code. The Engine obeys 'Hard' rules strictly.</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Target Type</label>
+                            <select id="ruleTargetType" class="w-full p-2 bg-gray-50 border rounded font-bold outline-none focus:border-purple-500">
+                                <option value="Teacher">Teacher</option>
+                                <option value="Subject">Subject</option>
+                                <option value="Class">Class</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Target Name</label>
+                            <input type="text" id="ruleTargetName" placeholder="E.g. VCK or MAT" class="w-full p-2 bg-gray-50 border rounded font-bold uppercase outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Constraint</label>
+                            <select id="ruleConstraint" class="w-full p-2 bg-gray-50 border rounded font-bold outline-none focus:border-purple-500">
+                                <option value="Block Day">Block Full Day</option>
+                                <option value="Block Period">Block Specific Period</option>
+                                <option value="Max Per Day">Max Periods / Day</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Parameter</label>
+                            <input type="text" id="ruleParameter" placeholder="E.g. Monday or 8" class="w-full p-2 bg-gray-50 border rounded font-bold outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 mb-1">Priority</label>
+                            <select id="ruleAction" class="w-full p-2 bg-gray-50 border rounded font-bold text-red-600 outline-none focus:border-purple-500">
+                                <option value="Hard">HARD (Must Obey)</option>
+                                <option value="Soft">SOFT (Flexible)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="addDynamicRule()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-lg shadow transition-colors flex items-center gap-2"><i data-lucide="plus-circle" class="w-4 h-4"></i> Add Rule to Engine</button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-black text-gray-800">Active Custom Rules</h2>
+                        <button onclick="saveRulesToCloud()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded font-bold text-sm shadow flex items-center gap-2"><i data-lucide="cloud-upload" class="w-4 h-4"></i> Sync Rules to Cloud</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead class="bg-gray-100 text-gray-700 border-b border-gray-200">
+                                <tr><th class="p-3">Type</th><th class="p-3">Target</th><th class="p-3">Condition</th><th class="p-3">Parameter</th><th class="p-3">Priority</th><th class="p-3 text-center">Action</th></tr>
+                            </thead>
+                            <tbody id="uiRulesTableBody" class="divide-y divide-gray-100">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tabGenerator" class="admin-tab-content hidden h-full flex flex-col">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 flex flex-col md:flex-row justify-between items-center shrink-0 gap-4">
+                    <div>
+                        <h2 class="font-black text-gray-800 text-lg">Master Matrix Generator</h2>
+                        <p class="text-xs text-gray-500 font-bold mt-1">Status: Ready to compute 2000x Iterations.</p>
+                    </div>
                     
-                    <button onclick="syncFromCloud()" class="bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-green-600">
-                        <i data-lucide="cloud" class="w-4 h-4"></i> Sync
-                    </button>
-                    <button onclick="saveGridToCloud()" class="bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-indigo-700">
-                        <i data-lucide="save" class="w-4 h-4"></i> Save Grid
-                    </button>
-                    
-                    <button onclick="saveDutiesToCloud()" class="bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-green-800">
-                        <i data-lucide="check-square" class="w-4 h-4"></i> Duty Count
-                    </button>
-                    <button onclick="exportPDF()" class="bg-gray-800 text-white px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-1 hover:bg-gray-900">
-                        <i data-lucide="download" class="w-4 h-4"></i> PDF
-                    </button>
-                </div>
-            </div>
-            <div id="mainGrid" class="p-6 min-h-[400px]">
-                <div class="text-center py-20 text-gray-400 font-bold">
-                    <i data-lucide="layout-grid" class="w-16 h-16 mx-auto mb-4 opacity-20"></i> 
-                    Select options and Process to view matrix
-                </div>
-            </div>
-        </section>
-    </main>
+                    <div class="flex items-center gap-2">
+                        <select id="viewType" class="p-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 outline-none">
+                            <option value="all">-- Select View Mode --</option>
+                            <option value="class">View by Class</option>
+                            <option value="teacher">View by Teacher</option>
+                        </select>
+                        <select id="viewFilter" class="hidden p-2 bg-blue-50 border border-blue-300 rounded-lg text-sm font-bold text-blue-800 outline-none max-w-[150px]">
+                        </select>
+                        <button onclick="window.exportPDF()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-bold text-sm shadow flex items-center gap-2 ml-2 transition-colors"><i data-lucide="printer" class="w-4 h-4"></i> PDF</button>
+                    </div>
 
-    <div id="editModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white rounded-2xl p-6 w-11/12 max-w-md shadow-2xl border border-gray-200">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-black text-xl text-blue-900 flex items-center gap-2"><i data-lucide="edit-3" class="w-5 h-5"></i> Edit Period</h3>
-                <button onclick="closeEditModal()" class="text-gray-400 hover:text-red-500 transition-colors"><i data-lucide="x" class="w-6 h-6"></i></button>
+                    <div class="flex gap-2 border-l pl-4 border-gray-200">
+                        <button onclick="resetTimetableUI()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-2 px-3 rounded-lg shadow-sm flex items-center gap-2 transition-colors" title="Factory Reset"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        <button onclick="window.generateGrid()" class="bg-blue-600 hover:bg-blue-700 text-white font-black py-2 px-6 rounded-lg shadow-md flex items-center gap-2 transition-all transform hover:scale-[1.02]"><i data-lucide="zap" class="w-5 h-5"></i> PROCESS ENGINE</button>
+                    </div>
+                </div>
+
+                <div id="loadStatus" class="mb-4 shrink-0"></div>
+
+                <div id="mainGrid" class="flex-1 bg-white rounded-xl shadow-inner border border-gray-200 overflow-auto p-4 relative">
+                    <div class="flex flex-col items-center justify-center h-full text-gray-400 py-10">
+                        <i data-lucide="layout-grid" class="w-16 h-16 mb-4 opacity-30"></i>
+                        <p class="text-lg font-bold">Grid Matrix Empty. Hit Process Engine.</p>
+                    </div>
+                </div>
             </div>
+            
+        </main>
+    </div>
+
+    <div id="teacherPortal" class="hidden h-full flex flex-col w-full bg-gray-50">
+        <header class="bg-green-800 text-white p-4 shadow-md flex justify-between items-center z-10 shrink-0">
+            <div class="flex items-center gap-3">
+                <i data-lucide="graduation-cap" class="w-6 h-6 text-green-300"></i>
+                <h1 class="text-xl font-black tracking-wider">STAFF PORTAL</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="teacherWelcomeText" class="font-bold bg-green-900 px-4 py-1.5 rounded-full shadow-inner text-sm">Welcome, Staff</span>
+                <button onclick="logout()" class="text-green-200 hover:text-white transition-colors bg-green-900 px-3 py-1.5 rounded flex items-center gap-2 text-sm font-bold"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-4 md:p-8">
+            <div class="max-w-4xl mx-auto space-y-6">
+                
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-5 rounded-r-lg shadow-sm flex items-start gap-4">
+                    <div class="bg-blue-100 p-2 rounded-full mt-1 shrink-0"><i data-lucide="info" class="w-5 h-5 text-blue-700"></i></div>
+                    <div>
+                        <h3 class="font-black text-blue-900 text-lg">Submit Your Weekly Constraints</h3>
+                        <p class="text-sm text-blue-800 mt-1 leading-relaxed">Select the specific periods you require for rest, admin work, or non-availability. Please note that clicking 'Submit' will lock your preferences and send them directly to the Master Engine.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <div class="flex justify-between items-end mb-4 border-b border-gray-100 pb-3">
+                        <div>
+                            <h2 class="text-xl font-black text-gray-800">Unavailability Matrix</h2>
+                            <p class="text-xs text-gray-500 font-bold mt-1">Click cells below to mark them as <span class="text-red-500">UNAVAILABLE (Max 3)</span>.</p>
+                        </div>
+                        <div class="text-sm font-bold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg">
+                            Selected: <span id="restCountDisplay" class="text-red-600 font-black">0</span> / 3
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto pb-2">
+                        <table class="w-full text-center border-collapse text-sm select-none min-w-[600px]">
+                            <thead class="bg-gray-50 text-gray-600 font-bold border-b-2 border-gray-200">
+                                <tr>
+                                    <th class="p-3 text-left w-24">Day</th>
+                                    <th class="p-3 border-l border-white">1</th><th class="p-3 border-l border-white">2</th><th class="p-3 border-l border-white">3</th><th class="p-3 border-l border-white">4</th>
+                                    <th class="p-3 border-l-2 border-gray-300 bg-yellow-50/50">5</th><th class="p-3 border-l border-white bg-yellow-50/50">6</th><th class="p-3 border-l border-white bg-yellow-50/50">7</th><th class="p-3 border-l border-white bg-yellow-50/50">8</th>
+                                </tr>
+                            </thead>
+                            <tbody id="restSelectorGrid" class="divide-y divide-gray-100">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                    <h2 class="text-lg font-black text-gray-800 mb-4 border-b border-gray-100 pb-2 flex items-center gap-2"><i data-lucide="book-open" class="w-5 h-5 text-green-600"></i> Your Allotted Workload</h2>
+                    <div id="teacherWorkloadDisplay" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <p class="text-sm text-gray-400 font-bold col-span-full">Loading workload...</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-4 pb-10">
+                    <button onclick="submitTeacherConstraints()" class="bg-green-600 hover:bg-green-700 text-white font-black py-4 px-10 rounded-xl shadow-xl flex items-center gap-3 transition-all transform hover:scale-[1.02] hover:-translate-y-1 text-lg">
+                        <i data-lucide="check-circle" class="w-6 h-6"></i> LOCK & SUBMIT PREFERENCES
+                    </button>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="editModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-96 transform transition-all scale-100">
+            <h2 class="text-xl font-black mb-4 text-gray-800 flex items-center gap-2"><i data-lucide="edit-3" class="w-5 h-5 text-blue-600"></i> Override Grid Cell</h2>
             <input type="hidden" id="editDay">
             <input type="hidden" id="editPeriod">
             <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Class Name(s)</label>
-                    <input type="text" id="editClass" placeholder="e.g. 10-A" class="w-full p-2 border-2 border-gray-200 rounded-lg font-bold text-gray-800 focus:border-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Subject</label>
-                    <input type="text" id="editSubject" placeholder="e.g. ENGLISH" class="w-full p-2 border-2 border-gray-200 rounded-lg font-bold text-blue-700 focus:border-blue-500 outline-none uppercase">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Teacher</label>
-                    <input type="text" id="editTeacher" placeholder="e.g. KS" class="w-full p-2 border-2 border-gray-200 rounded-lg font-bold text-gray-800 focus:border-blue-500 outline-none">
-                </div>
+                <div><label class="block text-xs font-bold text-gray-500 mb-1">Class</label><input type="text" id="editClass" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-700 outline-none"></div>
+                <div><label class="block text-xs font-bold text-gray-500 mb-1">Subject</label><input type="text" id="editSubject" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-700 outline-none uppercase"></div>
+                <div><label class="block text-xs font-bold text-gray-500 mb-1">Teacher Code</label><input type="text" id="editTeacher" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-700 outline-none"></div>
             </div>
-            <div class="flex justify-between items-center mt-6 pt-4 border-t border-gray-100">
-                <button onclick="deleteCellData()" class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-lg font-bold text-sm transition-colors">Clear Cell</button>
+            <div class="flex justify-between mt-6 pt-4 border-t border-gray-100">
+                <button onclick="deleteCellData()" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-1 text-sm"><i data-lucide="trash" class="w-4 h-4"></i> Clear</button>
                 <div class="flex gap-2">
-                    <button onclick="closeEditModal()" class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg font-bold text-sm transition-colors">Cancel</button>
-                    <button onclick="saveCellEdit()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-black text-sm shadow-md transition-all">SAVE</button>
+                    <button onclick="window.closeEditModal()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg transition-colors text-sm">Cancel</button>
+                    <button onclick="saveCellEdit()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-colors text-sm">Update</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="optimizerModal" class="hidden fixed inset-0 bg-black/60 z-[60] flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white rounded-2xl w-11/12 max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            <div class="bg-indigo-600 p-4 flex justify-between items-center text-white">
-                <div>
-                    <h3 class="font-black text-xl flex items-center gap-2"><i data-lucide="activity" class="w-5 h-5"></i> Master Sheet Optimizer</h3>
-                    <p class="text-indigo-200 text-xs font-medium mt-1">Audit report to achieve 40/40 balance in Google Sheet</p>
-                </div>
-                <button onclick="closeOptimizerModal()" class="text-indigo-200 hover:text-white transition-colors"><i data-lucide="x" class="w-6 h-6"></i></button>
-            </div>
-            <div class="p-4 bg-indigo-50 border-b border-indigo-100 flex justify-between items-center">
-                <span id="optimizerSummary" class="font-bold text-indigo-900 text-sm">Analyzing allocations...</span>
-                <span class="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded font-bold">Target: 40 Periods/Class</span>
-            </div>
-            <div class="p-4 overflow-y-auto flex-1 bg-gray-50">
-                <div id="optimizerContent" class="space-y-3"></div>
-            </div>
-            <div class="p-4 border-t border-gray-100 bg-white text-right">
-                <button onclick="closeOptimizerModal()" class="px-6 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg font-bold text-sm shadow-md transition-all">Close Report</button>
-            </div>
-        </div>
-    </div>
-
+    <script>lucide.createIcons();</script>
     <script src="config.js"></script>
     <script src="app.js"></script>
-    <script>lucide.createIcons();</script>
 </body>
 </html>
