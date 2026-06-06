@@ -6,7 +6,7 @@
 const APP_CONFIG = {
     fullName: "AGMHSS PSW", 
     shortName: "AGMHSS PSW",                                           
-    scriptUrl: "https://script.google.com/macros/s/AKfycbyd8tRhf0gzoKF__ysQVYunmLruK7EVF8DXOBx5_ubTPACGu1RcI66bkgCC5r3sF9We/exec" 
+    scriptUrl: "https://script.google.com/macros/s/AKfycbwewVicfWe5G5N-s8elRZ9Ga_Oo0kOYeAar8er6eIBCMJv0k-hWRKKz3U-dP92ft4Lt/exec" 
 };
 const SCRIPT_URL = APP_CONFIG.scriptUrl;
 
