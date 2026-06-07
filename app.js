@@ -350,6 +350,14 @@ window.runCalculationEngine = function(renderGrid = true, forceRecalculate = fal
 // 🌟 THE CORE TIMETABLE ENGINE
 // ==========================================
 window.generateGrid = function() {
+    // 🌟 NEW SAFETY CHECK: Warn if a grid already exists
+    if (generatedWeeklyTimetable && generatedWeeklyTimetable.length > 0) {
+        let userConfirmed = confirm("⚠️ WARNING: A Timetable Grid already exists!\n\nIf you click 'OK', the engine will run again, which will OVERWRITE your current grid and DESTROY any manual edits (swaps/fills) you have made.\n\nAre you sure you want to proceed and generate a new grid?");
+        if (!userConfirmed) {
+            return; // Stop the engine from running if user clicks Cancel
+        }
+    }
+
     const mainGrid = document.getElementById('mainGrid');
     const loadStatus = document.getElementById('loadStatus');
     if(loadStatus) loadStatus.innerHTML = '';
