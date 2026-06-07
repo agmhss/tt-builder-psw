@@ -34,24 +34,7 @@
                         <option value="teacher">Staff / Teacher</option>
                     </select>
                 </div>
-                <div id="teacherNameGroup" class="hidden">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Teacher Name / ID</label>
-                    <input type="text" id="loginTeacherName" placeholder="E.g. VCK" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold uppercase text-gray-700 outline-none">
-                </div>
-               <div id="loginScreen" class="absolute inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md border-t-8 border-blue-600">
-            <div class="text-center mb-8">
-                <h1 id="loginSchoolName" class="text-3xl font-black text-blue-900 uppercase tracking-widest">ORIENTAL GAHSS</h1>
-                <p class="text-sm font-bold text-gray-500 mt-1">Smart CMS Portal</p>
-            </div>
-            <div class="space-y-5">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Login As</label>
-                    <select id="loginRole" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 outline-none" onchange="toggleTeacherNameInput()">
-                        <option value="admin">System Administrator</option>
-                        <option value="teacher">Staff / Teacher</option>
-                    </select>
-                </div>
+                
                 <div id="teacherNameGroup" class="hidden">
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Teacher Name / ID</label>
                     <input type="text" id="loginTeacherName" placeholder="E.g. VCK" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold uppercase text-gray-700 outline-none">
@@ -75,7 +58,7 @@
             </div>
         </div>
     </div>
-                
+
     <div id="adminPortal" class="hidden h-full flex flex-col w-full">
         <header class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10 shrink-0">
             <div class="flex items-center gap-3">
@@ -159,7 +142,6 @@
                     </div>
                     <div class="flex gap-2 border-l pl-4 border-gray-200">
                         <button onclick="window.saveGridToCloud()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm flex items-center gap-2 transition-colors"><i data-lucide="cloud-upload" class="w-4 h-4"></i> Save Grid</button>
-                        
                         <button onclick="resetTimetableUI()" class="bg-red-50 text-red-600 border border-red-200 font-bold py-2 px-3 rounded-lg shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         <button onclick="window.generateGrid()" class="bg-blue-600 text-white font-black py-2 px-6 rounded-lg shadow-md flex items-center gap-2"><i data-lucide="zap" class="w-5 h-5"></i> PROCESS ENGINE</button>
                     </div>
