@@ -166,7 +166,24 @@ window.toggleTeacherNameInput = function() {
     if (role === 'teacher') nameGroup.classList.remove('hidden');
     else nameGroup.classList.add('hidden');
 };
-
+// ==========================================
+// 🌟 PASSWORD VISIBILITY TOGGLE
+// ==========================================
+window.togglePasswordVisibility = function() {
+    const passInput = document.getElementById('loginPasskey');
+    const eyeOpen = document.getElementById('eyeIconOpen');
+    const eyeClosed = document.getElementById('eyeIconClosed');
+    
+    if (passInput.type === 'password') {
+        passInput.type = 'text'; // பாஸ்வேர்டைக் காட்டுகிறோம்
+        eyeOpen.classList.add('hidden');
+        eyeClosed.classList.remove('hidden'); // கண் மூடிய ஐகானைக் காட்டுகிறோம்
+    } else {
+        passInput.type = 'password'; // பாஸ்வேர்டை மறைக்கிறோம்
+        eyeOpen.classList.remove('hidden'); // கண் திறந்த ஐகானைக் காட்டுகிறோம்
+        eyeClosed.classList.add('hidden');
+    }
+};
 window.attemptLogin = async function() {
     const role = document.getElementById('loginRole').value;
     const passkey = document.getElementById('loginPasskey').value;
