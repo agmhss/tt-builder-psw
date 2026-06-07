@@ -38,18 +38,18 @@
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Teacher Name / ID</label>
                     <input type="text" id="loginTeacherName" placeholder="E.g. VCK" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold uppercase text-gray-700 outline-none">
                 </div>
-                <div>
+               <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Secure Passkey</label>
-                    <input type="password" id="loginPasskey" placeholder="Enter Passkey" class="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 outline-none">
+                    <div class="relative">
+                        <input type="password" id="loginPasskey" placeholder="Enter Passkey" class="w-full p-3 pr-12 bg-gray-50 border-2 border-gray-200 rounded-xl font-bold text-gray-700 outline-none focus:border-blue-500 transition-colors">
+                        
+                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors focus:outline-none">
+                            <i data-lucide="eye" id="eyeIconOpen" class="w-5 h-5"></i>
+                            <i data-lucide="eye-off" id="eyeIconClosed" class="w-5 h-5 hidden"></i>
+                        </button>
+                    </div>
                 </div>
-                <button onclick="attemptLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black p-3 rounded-xl shadow-lg flex items-center justify-center gap-2">
-                    <i data-lucide="lock" class="w-5 h-5"></i> SECURE LOGIN
-                </button>
-                <p id="loginError" class="text-xs text-red-500 font-bold text-center mt-3 hidden">Invalid Credentials!</p>
-            </div>
-        </div>
-    </div>
-
+                
     <div id="adminPortal" class="hidden h-full flex flex-col w-full">
         <header class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10 shrink-0">
             <div class="flex items-center gap-3">
