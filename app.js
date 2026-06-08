@@ -700,16 +700,53 @@ window.openEditModal = function(event, day, period) {
 window.closeEditModal = function() { document.getElementById('editModal').classList.add('hidden'); };
 
 window.saveCellEdit = function() {
-    let day = document.getElementById('editDay').value, period = document.getElementById('editPeriod').value, cls = document.getElementById('editClass').value, sub = document.getElementById('editSubject').value.toUpperCase(), teacher = document.getElementById('editTeacher').value, viewType = document.getElementById('viewType')?.value, filterVal = document.getElementById('viewFilter')?.value;
-    let slotIndex = generatedWeeklyTimetable.findIndex(d => d.day === day && d.period === period && (viewType === 'teacher' ? d.teacherName === filterVal : getIndividualClasses(d.className).includes(filterVal)));
+    let day = document.getElementById('editDay').value;
+    let period = document.getElementById('editPeriod').value;
+    let cls = document.getElementById('editClass').value.toUpperCase();
+    let sub = document.getElementById('editSubject').value.toUpperCase();
+    let newTeacher = document.getElementById('editTeacher').value.toUpperCase();
+    
+    if(!cls || !sub || !newTeacher) return window.deleteCellData();
 
-    if (slotIndex !== -1) {
-        if(cls && sub && teacher) { generatedWeeklyTimetable[slotIndex].className = cls; generatedWeeklyTimetable[slotIndex].subjectName = sub; generatedWeeklyTimetable[slotIndex].teacherName = teacher; } 
-        else generatedWeeklyTimetable.splice(slotIndex, 1);
-    } else {
-        if(cls && sub && teacher) generatedWeeklyTimetable.push({ day, period, time: "Manual", className: cls, subjectName: sub, teacherName: teacher });
+    // 1. இந்த வகுப்பில் இந்த பீரியடில் ஏற்கனவே யார் இருந்தார்?
+    let targetClassSlotIndex = generatedWeeklyTimetable.findIndex(d => d.day === day && d.period === period && getIndividualClasses(d.className).includes(cls));
+    let oldTeacher = null;
+    let oldSub = null;
+    
+    if (targetClassSlotIndex !== -1) {
+        oldTeacher = generatedWeeklyTimetable[targetClassSlotIndex].teacherName;
+        oldSub = generatedWeeklyTimetable[targetClassSlotIndex].subjectName;
     }
-    window.closeEditModal(); window.swapSource = null; renderRegularTimetable(); 
+
+    // 2. புதிய ஆசிரியர் வேறு வகுப்பில் பிஸியா என சரிபார்த்தல்
+    let teacherBusySlotIndex = generatedWeeklyTimetable.findIndex(d => d.day === day && d.period === period && d.teacherName === newTeacher);
+
+    // 3. புதிய டேட்டாவை அப்டேட் செய்தல்
+    if (targetClassSlotIndex !== -1) {
+        generatedWeeklyTimetable[targetClassSlotIndex].className = cls;
+        generatedWeeklyTimetable[targetClassSlotIndex].subjectName = sub;
+        generatedWeeklyTimetable[targetClassSlotIndex].teacherName = newTeacher;
+    } else {
+        generatedWeeklyTimetable.push({ day, period, time: "Manual", className: cls, subjectName: sub, teacherName: newTeacher });
+    }
+
+    // 🌟 4. DOUBLE BOOKING EXCEPTION (PET & CLUB)
+    // இந்தப் பாடங்களுக்கு மட்டும் ஒரே ஆசிரியர் பல வகுப்புகளில் ஒரே நேரத்தில் இருக்க அனுமதிக்கப்படும்
+    let isDoubleBookingAllowed = sub.includes('PET') || sub.includes('CLUB') || sub.includes('JRC') || sub.includes('NCC') || sub.includes('NSS') || sub.includes('VE/CC') || sub.includes('CC') || sub.includes('EC');
+
+    // Double booking அனுமதிக்கப்படாத மற்ற பாடங்களுக்கு (Maths, English etc.) மட்டும் Auto-Swap வேலை செய்யும்
+    if (!isDoubleBookingAllowed && teacherBusySlotIndex !== -1 && teacherBusySlotIndex !== targetClassSlotIndex) {
+        if (oldTeacher && oldTeacher !== newTeacher) {
+            generatedWeeklyTimetable[teacherBusySlotIndex].teacherName = oldTeacher;
+            generatedWeeklyTimetable[teacherBusySlotIndex].subjectName = oldSub;
+        } else {
+            generatedWeeklyTimetable.splice(teacherBusySlotIndex, 1);
+        }
+    }
+
+    window.closeEditModal(); 
+    window.swapSource = null; 
+    renderRegularTimetable(); 
 };
 
 window.deleteCellData = function() {
